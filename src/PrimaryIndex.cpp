@@ -28,9 +28,24 @@ bool primary_change_key(PrimaryIndex& index, const string& old_key,
     if (pos == -1) return false;
     if (old_key == new_key) return true;
     if (binary_search(index, new_key) != -1) return false;
+
     int offset = index[pos].offset;
-    index.erase(index.begin() + pos);
-    primary_insert(index, new_key, offset);
+    int target = binary_insert_pos(index, new_key);   // where new_key belongs (in the array that still holds old_key)
+
+    // Explicit shifting: move the entries between pos and target by one place
+    // so the array stays sorted, then drop the entry at its new position.
+    if (target > pos) {
+        // new key is larger: shift entries (pos+1 .. target-1) one step LEFT
+        for (int i = pos; i < target - 1; ++i)
+            index[i] = index[i + 1];
+        target = target - 1;
+    } else {
+        // new key is smaller: shift entries (target .. pos-1) one step RIGHT
+        for (int i = pos; i > target; --i)
+            index[i] = index[i - 1];
+    }
+    index[target].key = new_key;
+    index[target].offset = offset;
     return true;
 }
 
@@ -68,9 +83,9 @@ static int build_from_file(PrimaryIndex& index, const string& path, int rec_size
 }
 
 int build_doctors_primary(const string& path) {
-    return build_from_file(doctors_primary, path, DOCTOR_REC_SIZE);
+    return build_from_file(doctors_primary, path, DOCTOR_RECORD_SIZE);
 }
 
 int build_appointments_primary(const string& path) {
-    return build_from_file(appointments_primary, path, APPOINT_REC_SIZE);
+    return build_from_file(appointments_primary, path, APPT_RECORD_SIZE);
 }
